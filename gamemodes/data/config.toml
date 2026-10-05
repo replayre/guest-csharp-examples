@@ -1,0 +1,58 @@
+[General]
+# A brief description of this bundle's purpose
+description = "Game modes bundle for Alpha Playtest"
+
+# A declaration of authorship of this bundle
+author = "replay.re"
+
+# A text version string
+version = "1.0"
+
+[Scripting]
+# Name of the WASM blob to serve to and execute on clients
+client_blob = "cl.wasm"
+
+# Name of the WASM blob to execute on the server
+server_blob = "sv.wasm"
+
+# Enable virtual file system mounting of ugc/{bundle_name}/vfs/ into this servers isolated context
+# Intended for config files, dedicated log output, etc.
+# Note: Will create the vfs dir if non existing
+enable_vfs = true
+
+[ReUi]
+# Initial URL loaded in the bundle's iframe
+# Example of a locally hosted UI:
+# initial_page = "index.html"
+#
+# Example of an externally hosted UI:
+# initial_page = "https://your-web-hosted-ui/"
+#
+initial_page = "index.html"
+
+# Virtual mounting path of web content
+# Note: This is useful for using standard web frameworks as UIs
+#       It allows web apps that expect to be served without relative URLs
+#       like https://ugc-frame-{name}/, but still package web content
+#       in a subdir like ugc/{bundle_name}/{name_of_web_content}/
+# Example of a svelte SPA
+# content_root = "app/"
+#
+content_root = "ui/"
+
+# Array of files to be bundled
+# Supports globbing via * and **
+# Example of an SPA UI placed in a folder ui/:
+files = [
+    "ui/index.html",
+    "ui/_app/**",
+    "ui/fonts/**",
+    "ui/sw.js",
+]
+# 
+
+[Meta]
+# Declaration of bundle compatibility
+# Only version "alpha_playtest" is currently supported
+#
+config_version = "alpha_playtest"
