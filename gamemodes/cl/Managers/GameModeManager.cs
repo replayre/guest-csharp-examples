@@ -30,7 +30,7 @@ public static class GameModeManager
         Console.WriteLine($"[GameModeManager] Registered game mode: {mode.Id} ({mode.Name})");
     }
 
-    public static void ActivateGameMode(string gameModeId)
+    public static async void ActivateGameMode(string gameModeId)
     {
         if (!_registeredModes.TryGetValue(gameModeId, out var mode))
         {
@@ -56,14 +56,11 @@ public static class GameModeManager
         Console.WriteLine($"[GameModeManager] Activated game mode: {gameModeId}");
 
         var currentGeneration = ++_tickGeneration;
-        Future.Spawn(async () =>
+        while (currentGeneration == _tickGeneration)
         {
-            while (currentGeneration == _tickGeneration)
-            {
-                _activeMode?.GameMode?.OnTick();
-                await Future.Yield();
-            }
-        });
+            _activeMode?.GameMode?.OnTick();
+            await Future.Yield();
+        }
     }
 
     public static GameModeDefinition? GetActiveMode()

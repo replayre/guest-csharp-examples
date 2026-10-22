@@ -29,7 +29,7 @@ public class Roaming : IGameMode
     private bool _isHelpScreenOpen = true;
     private bool _isCombatEnabled = false;
 
-    public void OnActivate()
+    public async void OnActivate()
     {
         Console.WriteLine("[Roaming] OnActivate");
 
@@ -65,12 +65,9 @@ public class Roaming : IGameMode
         AddEquipment();
         UnlockSkillTree();
 
-        Future.Spawn(async () =>
-        {
-            await Future.Sleep(2000);
+        await Future.Sleep(2000);
 
-            TeleportToSpawnPoint();
-        });
+        TeleportToSpawnPoint();
     }
 
     public void OnDeactivate()

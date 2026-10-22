@@ -30,7 +30,7 @@ public static class NoClipTools
 
                 if (active)
                 {
-                    Future.Spawn(FlyLoop);
+                    FlyLoop().Forget();
                 }
             },
             EInputKey.IK_R,
