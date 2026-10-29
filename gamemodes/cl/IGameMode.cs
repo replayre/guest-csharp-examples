@@ -7,6 +7,7 @@ public interface IGameMode
     void OnTick();
     void OnEntityAttached(re.EntityAttached evt) { }
     void OnEntityDisposed(re.EntityDisposed evt) { }
+    void OnObserverEntityChanged(re.ClientId client, re.EntityId previous, re.EntityId current) { }
     public void OnPuppetHealthChanged(
         PlayerPuppet puppet,
         float newHealth,

@@ -102,6 +102,19 @@ public static class GameModeManager
         _activeMode?.GameMode?.OnEntityDisposed(evt);
     }
 
+    public static void OnObserverEntityChanged(
+        re.ClientId client,
+        re.EntityId previous,
+        re.EntityId current
+    )
+    {
+        Console.WriteLine(
+            $"[GameModeManager] Observer entity of {client} changed {previous} -> {current}"
+        );
+
+        _activeMode?.GameMode?.OnObserverEntityChanged(client, previous, current);
+    }
+
     public static void OnPuppetHealthChanged(
         PlayerPuppet puppet,
         float newHealth,

@@ -134,6 +134,18 @@ public class Roaming() : IGameMode
         _players.Remove(client);
     }
 
+    public void OnObserverEntityChanged(
+        re.ClientId client,
+        re.EntityId previous,
+        re.EntityId current
+    )
+    {
+        if (_players.TryGetValue(client, out var state))
+        {
+            state.Entity = current;
+        }
+    }
+
     public void OnUpdateCombatState(
         re.ClientId client,
         types.roaming.UpdateCombatStatePayload payload
@@ -147,7 +159,7 @@ public class Roaming() : IGameMode
             re.Events.EmitNetTargeted(
                 types.roaming.MessageNames.PlayerStateChanged,
                 _players.Keys.ToList(),
-                new types.roaming.PlayerStateChangedPayload(state.Entity, state.CombatEnabled)
+                new types.roaming.PlayerStateChangedPayload(client, state.CombatEnabled)
             );
         }
     }

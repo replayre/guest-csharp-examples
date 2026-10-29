@@ -28,6 +28,8 @@ public class Roaming : IGameMode
     private double _combatToggleCooldownTime = 0.0;
     private bool _isHelpScreenOpen = true;
     private bool _isCombatEnabled = false;
+    private re.EntityId _localEntity = new();
+    private re.EntityId _pendingLocalEntity = new();
 
     public async void OnActivate()
     {
@@ -135,6 +137,13 @@ public class Roaming : IGameMode
             return;
         }
 
+        _localEntity = re.EntitySystem.GetNetIdFromEntity(player);
+
+        if (_pendingLocalEntity.IsValid())
+        {
+            TryReapplyLocalPlayerState(player);
+        }
+
         var hasEffect = game.StatusEffectSystem.ObjectHasStatusEffect(
             player.Downgrade(),
             new TDBID("GameplayRestriction.NoCombat")
@@ -162,12 +171,7 @@ public class Roaming : IGameMode
         _playersByEntityId.TryGetValue(evt.netid, out var state);
         if (state != null)
         {
-            AddPlayerPinMarker(state);
-            NameTagManager.SetVisible(state.Entity, true);
-            NameTagManager.SetText(state.Entity, state.Name);
-            NameTagManager.SetFriendly(state.Entity, !state.CombatEnabled);
-
-            SetEntityCombatState(state.Entity, state.CombatEnabled);
+            ApplyPlayerVisuals(state);
         }
     }
 
@@ -182,15 +186,74 @@ public class Roaming : IGameMode
 
     public void OnPlayerJoined(types.roaming.PlayerJoinedPayload payload)
     {
+        if (_playersByClientId.Remove(payload.id, out var existing))
+        {
+            _playersByEntityId.Remove(existing.Entity);
+            RemovePlayerPinMarker(existing);
+        }
+
         var state = new PlayerState(
             payload.id,
             payload.entity,
             payload.name,
             payload.combatEnabled
         );
-        _playersByClientId.Add(payload.id, state);
-        _playersByEntityId.Add(payload.entity, state);
 
+        _playersByClientId[payload.id] = state;
+        if (payload.entity.IsValid())
+        {
+            _playersByEntityId[payload.entity] = state;
+        }
+
+        ApplyPlayerVisuals(state);
+    }
+
+    public void OnPlayerLeft(types.roaming.PlayerLeftPayload payload)
+    {
+        if (_playersByClientId.Remove(payload.id, out var state))
+        {
+            _playersByEntityId.Remove(state.Entity);
+            RemovePlayerPinMarker(state);
+        }
+    }
+
+    public void OnObserverEntityChanged(
+        re.ClientId client,
+        re.EntityId previous,
+        re.EntityId current
+    )
+    {
+        Console.WriteLine($"[Roaming] Observer entity of {client} changed {previous} -> {current}");
+
+        if (_localEntity.IsValid() && (previous == _localEntity || current == _localEntity))
+        {
+            _pendingLocalEntity = current;
+        }
+
+        if (!_playersByClientId.TryGetValue(client, out var state))
+        {
+            return;
+        }
+
+        if (state.Entity == current)
+        {
+            return;
+        }
+
+        _playersByEntityId.Remove(state.Entity);
+        RemovePlayerPinMarker(state);
+
+        state.Entity = current;
+        if (current.IsValid())
+        {
+            _playersByEntityId[current] = state;
+        }
+
+        ApplyPlayerVisuals(state);
+    }
+
+    private void ApplyPlayerVisuals(PlayerState state)
+    {
         AddPlayerPinMarker(state);
 
         NameTagManager.SetVisible(state.Entity, true);
@@ -200,12 +263,41 @@ public class Roaming : IGameMode
         SetEntityCombatState(state.Entity, state.CombatEnabled);
     }
 
-    public void OnPlayerLeft(types.roaming.PlayerLeftPayload payload)
+    private void TryReapplyLocalPlayerState(game.Object player)
     {
-        if (_playersByClientId.Remove(payload.id, out var state))
+        if (re.EntitySystem.GetNetIdFromEntity(player) != _pendingLocalEntity)
         {
-            _playersByClientId.Remove(state.Id);
-            RemovePlayerPinMarker(state);
+            return;
+        }
+
+        if (PlayerDevelopmentSystem.GetInstance(player) == null)
+        {
+            return;
+        }
+
+        _pendingLocalEntity = new re.EntityId();
+
+        Console.WriteLine("[Roaming] Applying local player state to the new observer entity");
+
+        StatusEffectHelper.ApplyStatusEffect(
+            player.Downgrade(),
+            new TDBID("GameplayRestriction.NoGrenadeOrGadget"),
+            0
+        );
+        StatusEffectHelper.ApplyStatusEffect(
+            player.Downgrade(),
+            new TDBID("GameplayRestriction.InfiniteAmmo"),
+            0
+        );
+
+        UnlockSkillTree();
+
+        // The new puppet has a fresh attitude agent, so every remote attitude has to be set
+        // again or neither side can damage the other
+        //
+        foreach (var entry in _playersByClientId)
+        {
+            SetEntityCombatState(entry.Value.Entity, entry.Value.CombatEnabled);
         }
     }
 
@@ -240,13 +332,12 @@ public class Roaming : IGameMode
 
     public void OnPlayerStateChanged(types.roaming.PlayerStateChangedPayload payload)
     {
-        _playersByEntityId.TryGetValue(payload.entity, out var state);
-        if (state != null)
+        if (_playersByClientId.TryGetValue(payload.id, out var state))
         {
             state.CombatEnabled = payload.combatEnabled;
-            NameTagManager.SetFriendly(payload.entity, !state.CombatEnabled);
+            NameTagManager.SetFriendly(state.Entity, !state.CombatEnabled);
 
-            SetEntityCombatState(payload.entity, state.CombatEnabled);
+            SetEntityCombatState(state.Entity, state.CombatEnabled);
         }
     }
 
@@ -324,23 +415,7 @@ public class Roaming : IGameMode
             return;
         }
 
-        var gameInstance = ScriptGameInstance.Get();
-        var uiSys = ScriptGameInstance.GetUISystem(gameInstance)!;
-
-        {
-            var menuEvent = new ink.MenuInstance_SpawnEvent();
-            menuEvent.Init(new("OnOpenPauseMenu"));
-            uiSys.QueueEvent(menuEvent);
-        }
-
-        {
-            var menuInstance = ink.InkSystem.GetMenuInstance()!;
-            var userData = new MorphMenuUserData();
-            menuInstance.SwitchToScenario(
-                new CName("MenuScenario_CharacterCustomizationMirror"),
-                userData
-            );
-        }
+        re.Ui.ShowBodyGenderSelector(true);
     }
 
     public void SpawnRandomVehicle()

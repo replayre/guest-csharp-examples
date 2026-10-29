@@ -12,7 +12,6 @@ public static class NoClipTools
     private static float yaw = 0f;
     private static float speed = 1.0f;
     private static float angle = 0f;
-    private static bool inputListenersSetup = false;
 
     public static void Register()
     {
@@ -20,11 +19,7 @@ public static class NoClipTools
             "debug:noclip",
             (string[] args) =>
             {
-                if (!inputListenersSetup)
-                {
-                    ManageInputListeners(false);
-                    inputListenersSetup = true;
-                }
+                ManageInputListeners(false);
 
                 active = !active;
 
@@ -278,6 +273,7 @@ public static class NoClipTools
         }
 
         var timeLast = TimingHelper.GetTimeSeconds();
+        ulong lastPuppetId = 0;
 
         while (active)
         {
@@ -290,6 +286,15 @@ public static class NoClipTools
             {
                 await Future.Yield();
                 continue;
+            }
+
+            var puppetId = player.GetEntityID().id;
+            if (puppetId != lastPuppetId)
+            {
+                ManageInputListeners(false);
+                lastPuppetId = puppetId;
+
+                Console.WriteLine($"[NoClip] Bound input listeners to puppet {puppetId}");
             }
 
             Vector4 newPos = player.GetWorldPosition();

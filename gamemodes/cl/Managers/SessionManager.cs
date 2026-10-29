@@ -104,16 +104,6 @@ public static class SessionManager
             }
         );
 
-        re.Hooks.PlaceVoid(
-            "PlayerDevelopmentSystem",
-            "OnPlayerAttach;PlayerAttachRequest",
-            (UIInventoryScriptableSystem_OnPlayerAttach x) =>
-            {
-                re.Hooks.CallOriginalVoid();
-                x.self.playerDevelopmentUpdated = false;
-            }
-        );
-
         re.Events.On(
             "UgcBundleStopping",
             (re.UgcBundleStopping x) =>
@@ -235,12 +225,6 @@ public readonly partial record struct ScriptedPuppet_RewardKiller(
     WeakHandle<game.Object> killer,
     game.KillType killType,
     bool isAnyDamageNonlethal
-);
-
-[Msgpack.Gen]
-public readonly partial record struct UIInventoryScriptableSystem_OnPlayerAttach(
-    PlayerDevelopmentSystem self,
-    game.PlayerAttachRequest? request
 );
 
 [Msgpack.Gen]

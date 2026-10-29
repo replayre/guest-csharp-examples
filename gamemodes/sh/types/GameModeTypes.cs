@@ -24,6 +24,13 @@ public partial record ActiveModeUpdate(
 [Msgpack.Gen]
 public partial record DebugModeUpdate(bool Enabled);
 
+[Msgpack.Gen]
+public partial record ObserverEntityChangedPayload(
+    re.ClientId id,
+    re.EntityId previous,
+    re.EntityId current
+);
+
 public static class MessageNames
 {
     public const string ClientReady = "gamemode:clientReady";
@@ -31,4 +38,5 @@ public static class MessageNames
     public const string ActiveModeUpdate = "gamemode:activeModeUpdate";
     public const string DebugModeUpdate = "gamemode:debugModeUpdate";
     public const string JoinDelayed = "gamemode:joinDelayed";
+    public const string ObserverEntityChanged = "gamemode:observerEntityChanged";
 }

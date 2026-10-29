@@ -226,6 +226,25 @@ public static class GameModeManager
         _activeMode?.GameMode?.OnClientDisconnect(client);
     }
 
+    public static void OnObserverEntityChanged(
+        re.ClientId client,
+        re.EntityId previous,
+        re.EntityId current
+    )
+    {
+        Console.WriteLine(
+            $"[GameModeManager] Observer entity of {client} changed {previous} -> {current}"
+        );
+
+        _baseMode?.GameMode?.OnObserverEntityChanged(client, previous, current);
+        _activeMode?.GameMode?.OnObserverEntityChanged(client, previous, current);
+
+        re.Events.EmitNetBroadcast(
+            types.gamemodes.MessageNames.ObserverEntityChanged,
+            new types.gamemodes.ObserverEntityChangedPayload(client, previous, current)
+        );
+    }
+
     public static void OnClientRequestDelayedJoin(re.ClientId client)
     {
         if (_activeMode?.GameMode?.IsDelayedJoiningAllowed() == true)

@@ -23,6 +23,18 @@ public static class GameModeHandler
             }
         );
 
+        re.Events.OnNet<types.gamemodes.ObserverEntityChangedPayload>(
+            types.gamemodes.MessageNames.ObserverEntityChanged,
+            (payload) =>
+            {
+                GameModeManager.OnObserverEntityChanged(
+                    payload.id,
+                    payload.previous,
+                    payload.current
+                );
+            }
+        );
+
         re.Con.RegisterCommandWithKeyBind(
             "join-existing-mode",
             (string[] args) =>

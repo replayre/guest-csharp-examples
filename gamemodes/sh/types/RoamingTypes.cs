@@ -21,7 +21,7 @@ public partial record MatchSyncPayload(double matchRemainingSeconds);
 public partial record UpdateCombatStatePayload(bool combatState);
 
 [Msgpack.Gen]
-public partial record PlayerStateChangedPayload(re.EntityId entity, bool combatEnabled);
+public partial record PlayerStateChangedPayload(re.ClientId id, bool combatEnabled);
 
 [Serde.GenerateSerde]
 public partial record HudPayload(

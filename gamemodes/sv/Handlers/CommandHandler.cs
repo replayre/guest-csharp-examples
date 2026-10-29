@@ -57,6 +57,24 @@ public static class CommandHandler
         );
 
         re.Con.RegisterCommand(
+            "setgender",
+            args =>
+            {
+                var clientId =
+                    args.Length > 0 && ushort.TryParse(args[0], out var id)
+                        ? new re.ClientId(id)
+                        : new re.ClientId();
+                if (!clientId.IsValid() || args.Length < 2)
+                {
+                    Console.WriteLine("Usage: setgender <client_id> <Male|Female>");
+                    return;
+                }
+
+                re.cl.ObserverComponent.SetPrimaryObserverBodyGender(clientId, new CName(args[1]));
+            }
+        );
+
+        re.Con.RegisterCommand(
             "listmodes",
             args =>
             {

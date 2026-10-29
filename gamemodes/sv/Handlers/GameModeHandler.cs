@@ -10,5 +10,14 @@ public static class GameModeHandler
             types.gamemodes.MessageNames.JoinDelayed,
             GameModeManager.OnClientRequestDelayedJoin
         );
+
+        re.Events.On<re.ClientObserverEntityChanged>(
+            (payload) =>
+                GameModeManager.OnObserverEntityChanged(
+                    payload.id,
+                    payload.previous,
+                    payload.current
+                )
+        );
     }
 }
