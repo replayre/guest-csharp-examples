@@ -58,14 +58,16 @@ public static class GameModeManager
             mode.GameMode?.OnActivate();
             Console.WriteLine($"[GameModeManager] Activated base mode: {gameModeId}");
 
-            Future.Spawn(async () =>
-            {
-                while (true)
-                {
-                    _baseMode?.GameMode?.OnTick();
-                    await Future.Yield();
-                }
-            });
+            RunBaseModeTicks().Forget();
+        }
+    }
+
+    private static async Future RunBaseModeTicks()
+    {
+        while (true)
+        {
+            _baseMode?.GameMode?.OnTick();
+            await Future.Yield();
         }
     }
 
@@ -102,36 +104,38 @@ public static class GameModeManager
             Console.WriteLine($"[GameModeManager] Activated game mode: {gameModeId}");
 
             var currentGeneration = ++_tickGeneration;
-            Future.Spawn(async () =>
+            RunActiveModeTicks(currentGeneration).Forget();
+        }
+    }
+
+    private static async Future RunActiveModeTicks(int generation)
+    {
+        while (generation == _tickGeneration)
+        {
+            if (_activeMode?.GameMode?.OnTick() == true)
             {
-                while (currentGeneration == _tickGeneration)
-                {
-                    if (_activeMode?.GameMode?.OnTick() == true)
-                    {
-                        EndGameMode();
-                        break;
-                    }
+                EndGameMode();
+                break;
+            }
 
-                    var timeNow = TimingHelper.GetTimeSeconds();
-                    if ((timeNow - _lastInfoSendTime) >= 1.0 && _activeMode?.GameMode != null)
-                    {
-                        re.Events.EmitNetBroadcast(
-                            types.gamemodes.MessageNames.ActiveModeUpdate,
-                            new types.gamemodes.ActiveModeUpdate(
-                                true,
-                                _activeMode?.GameMode?.IsDelayedJoiningAllowed() ?? false,
-                                _activeMode!.Name,
-                                (int)(_activeMode?.GameMode?.GetRemainingRuntime() ?? 0),
-                                _activeMode?.GameMode?.GetNumberOfPlayers() ?? 0
-                            )
-                        );
+            var timeNow = TimingHelper.GetTimeSeconds();
+            if ((timeNow - _lastInfoSendTime) >= 1.0 && _activeMode?.GameMode != null)
+            {
+                re.Events.EmitNetBroadcast(
+                    types.gamemodes.MessageNames.ActiveModeUpdate,
+                    new types.gamemodes.ActiveModeUpdate(
+                        true,
+                        _activeMode?.GameMode?.IsDelayedJoiningAllowed() ?? false,
+                        _activeMode!.Name,
+                        (int)(_activeMode?.GameMode?.GetRemainingRuntime() ?? 0),
+                        _activeMode?.GameMode?.GetNumberOfPlayers() ?? 0
+                    )
+                );
 
-                        _lastInfoSendTime = timeNow;
-                    }
+                _lastInfoSendTime = timeNow;
+            }
 
-                    await Future.Yield();
-                }
-            });
+            await Future.Yield();
         }
     }
 
@@ -153,32 +157,30 @@ public static class GameModeManager
 
                 if (!DebugMode)
                 {
-                    Future.Spawn(async () =>
-                    {
-                        Console.WriteLine(
-                            $"[GameModeManager] Queueing vote in 30 seconds unless interrupted"
-                        );
-                        await Future.Sleep(30 * 1000);
-
-                        if (GetActiveMode() != null || Voting.IsVoteActive())
-                        {
-                            Console.WriteLine(
-                                $"[GameModeManager] Already in mode or a vote is active, aborting"
-                            );
-                            return;
-                        }
-
-                        StartVoteForRegisteredModes(
-                            30 * 1000,
-                            new types.voting.VotingMetadata(
-                                Title: "Choose Next Game Mode",
-                                Description: "Vote for the next game mode!"
-                            )
-                        );
-                    });
+                    QueueVoteAfterModeEnd().Forget();
                 }
             }
         }
+    }
+
+    private static async Future QueueVoteAfterModeEnd()
+    {
+        Console.WriteLine($"[GameModeManager] Queueing vote in 30 seconds unless interrupted");
+        await Future.Sleep(30 * 1000);
+
+        if (GetActiveMode() != null || Voting.IsVoteActive())
+        {
+            Console.WriteLine($"[GameModeManager] Already in mode or a vote is active, aborting");
+            return;
+        }
+
+        StartVoteForRegisteredModes(
+            30 * 1000,
+            new types.voting.VotingMetadata(
+                Title: "Choose Next Game Mode",
+                Description: "Vote for the next game mode!"
+            )
+        );
     }
 
     public static GameModeDefinition? GetActiveMode()
@@ -271,28 +273,30 @@ public static class GameModeManager
 
         if (!DebugMode && GetActiveMode() == null && !Voting.IsVoteActive())
         {
-            Future.Spawn(async () =>
-            {
-                await Future.Sleep(10 * 1000);
-
-                if (DebugMode || GetActiveMode() != null || Voting.IsVoteActive())
-                {
-                    return;
-                }
-
-                Console.WriteLine(
-                    $"[GameModeManager] Player connected while no mode was active. Starting vote"
-                );
-
-                StartVoteForRegisteredModes(
-                    30 * 1000,
-                    new types.voting.VotingMetadata(
-                        Title: "Choose Next Game Mode",
-                        Description: "Vote for the next game mode!"
-                    )
-                );
-            });
+            QueueVoteAfterClientReady().Forget();
         }
+    }
+
+    private static async Future QueueVoteAfterClientReady()
+    {
+        await Future.Sleep(10 * 1000);
+
+        if (DebugMode || GetActiveMode() != null || Voting.IsVoteActive())
+        {
+            return;
+        }
+
+        Console.WriteLine(
+            $"[GameModeManager] Player connected while no mode was active. Starting vote"
+        );
+
+        StartVoteForRegisteredModes(
+            30 * 1000,
+            new types.voting.VotingMetadata(
+                Title: "Choose Next Game Mode",
+                Description: "Vote for the next game mode!"
+            )
+        );
     }
 
     public static void StartVote(
@@ -301,6 +305,12 @@ public static class GameModeManager
         types.voting.VotingMetadata? metadata = null
     )
     {
+        if (re.GameClientRegistry.GetClients().Count == 0)
+        {
+            Console.WriteLine("[GameModeManager] No clients connected, vote skipped");
+            return;
+        }
+
         var voteId = $"vote-{Guid.NewGuid():N}";
         Voting.StartVote(
             voteId,
@@ -317,17 +327,7 @@ public static class GameModeManager
 
                     if (!DebugMode)
                     {
-                        Future.Spawn(async () =>
-                        {
-                            await Future.Sleep(3000);
-
-                            if (GetActiveMode() != null || Voting.IsVoteActive())
-                            {
-                                return;
-                            }
-
-                            StartVoteForRegisteredModes(durationMs, metadata);
-                        });
+                        QueueVoteRetry(durationMs, metadata).Forget();
                     }
 
                     return;
@@ -343,6 +343,21 @@ public static class GameModeManager
                 }
             }
         );
+    }
+
+    private static async Future QueueVoteRetry(
+        long durationMs,
+        types.voting.VotingMetadata? metadata
+    )
+    {
+        await Future.Sleep(3000);
+
+        if (GetActiveMode() != null || Voting.IsVoteActive())
+        {
+            return;
+        }
+
+        StartVoteForRegisteredModes(durationMs, metadata);
     }
 
     public static void StartVoteForRegisteredModes(

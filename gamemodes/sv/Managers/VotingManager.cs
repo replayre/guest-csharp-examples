@@ -60,11 +60,8 @@ public class VotingManager
             );
         }
 
-        // TODO: there is a bug here. If EndVote is invoked via server ConCmd
-        // this will still execute in the future and cancel a pontential next vote that was launched
-        //
         await Future.Sleep((ulong)durationMs);
-        EndVote();
+        EndVote(voteId);
     }
 
     public bool CastVote(re.ClientId clientId, string voteId, string gameModeId)
@@ -122,9 +119,19 @@ public class VotingManager
 
     public void EndVote()
     {
+        EndVote(null);
+    }
+
+    private void EndVote(string? voteId)
+    {
         lock (_voteLock)
         {
             if (_currentVote == null)
+            {
+                return;
+            }
+
+            if (voteId != null && _currentVote.VoteId != voteId)
             {
                 return;
             }
