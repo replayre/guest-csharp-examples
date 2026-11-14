@@ -13,25 +13,25 @@ public static class SessionManager
             "ClientConnecting",
             (re.ClientConnecting x) =>
             {
-                if (_banList.ContainsKey(x.userid))
+                if (_banList.ContainsKey(x.userId))
                 {
                     Console.WriteLine(
-                        $"[SessionManager] Prevented banned player {x.username}({x.userid}) from joining!"
+                        $"[SessionManager] Prevented banned player {x.userName}({x.userId}) from joining!"
                     );
                     return;
                 }
 
-                _players[x.userid] = x.username;
+                _players[x.userId] = x.userName;
 
                 if (!re.GameClientRegistry.AcceptConnection(x.connection))
                 {
                     Console.WriteLine(
-                        $"[SessionManager] Failed to accept player {x.username}({x.userid}). Crashed during connect?"
+                        $"[SessionManager] Failed to accept player {x.userName}({x.userId}). Crashed during connect?"
                     );
                     return;
                 }
 
-                Console.WriteLine($"[SessionManager] Accepted player {x.username}({x.userid})");
+                Console.WriteLine($"[SessionManager] Accepted player {x.userName}({x.userId})");
             }
         );
 

@@ -14,7 +14,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="replay.blackice.client" Version="*" />
+        <PackageReference Include="replay.blackice.client" Version="1.*" />
         <PackageReference Include="Serde" Version="0.10.2" />
     </ItemGroup>
 

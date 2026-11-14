@@ -15,7 +15,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="replay.blackice.server" Version="*" />
+        <PackageReference Include="replay.blackice.server" Version="1.*" />
     </ItemGroup>
 
     <ItemGroup>
